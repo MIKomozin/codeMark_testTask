@@ -9,5 +9,4 @@ public class CodemarkApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(CodemarkApplication.class, args);
 	}
-
 }

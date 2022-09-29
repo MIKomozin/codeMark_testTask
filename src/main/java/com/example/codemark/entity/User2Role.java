@@ -8,10 +8,6 @@ import javax.persistence.*;
 public class User2Role {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
-
-    @Id
     @ManyToOne
     @JoinColumn(name = "user_login", referencedColumnName = "login")
     private User user;
@@ -20,14 +16,6 @@ public class User2Role {
     @ManyToOne
     @JoinColumn(name = "role_id", referencedColumnName = "id")
     private Role role;
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
 
     public User getUser() {
         return user;

@@ -22,7 +22,6 @@ public class User {
     @OneToMany(mappedBy = "user")
     List<User2Role> user2role;
 
-
     public String getLogin() {
         return login;
     }
