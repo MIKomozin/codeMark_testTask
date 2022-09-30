@@ -86,7 +86,7 @@ public class UserServiceImpl implements UserService {
     public ResponseTemplate addUser(String login, String name, String password, List<String> roleList) {
         ResponseTemplate responseTemplate = new ResponseTemplate();
         List<String> errors = new ArrayList<>();
-        addErrors(login, name, password, errors, true);
+        addErrors(login, name, password, errors, "addUser");
         if (errors.size() > 0) {
             responseTemplate.setSuccess(false);
             responseTemplate.setErrors(errors);
@@ -109,7 +109,7 @@ public class UserServiceImpl implements UserService {
     public ResponseTemplate updateUser(String login, String name, String password, List<String> roleList) {
         ResponseTemplate responseTemplate = new ResponseTemplate();
         List<String> errors = new ArrayList<>();
-        addErrors(login, name, password, errors, false);
+        addErrors(login, name, password, errors, "updateUser");
         if (errors.size() > 0) {
             responseTemplate.setSuccess(false);
             responseTemplate.setErrors(errors);
@@ -154,7 +154,7 @@ public class UserServiceImpl implements UserService {
         }
     }
 
-    public void addErrors(String login, String name, String password, List<String> errors, boolean checkAddUserMethod) {
+    public void addErrors(String login, String name, String password, List<String> errors, String method) {
         Pattern pattern = Pattern.compile("\\d");
         Matcher matcher = pattern.matcher(password);
         if (login.isEmpty()) errors.add("поле login не должно быть пустым");
@@ -163,9 +163,10 @@ public class UserServiceImpl implements UserService {
         if (!matcher.find()) errors.add("поле password должно содержать хотя бы одно числовое значение");
         if (password.equals(password.toLowerCase())) errors.add("поле password должно содержать хотя бы одну заглавную букву");
         //в зависимости от метода нам необходимо проверятб существует ли данный пользователь в БД или нет
-        if (checkAddUserMethod) {
+        if (method.equals("addUser")) {
             if (userRepository.findUserByLogin(login) != null) errors.add("невозможно добавить пользователя с такми login. Пользователь с таким login уже существует");
-        } else {
+        }
+        if (method.equals("updateUser")) {
             if (userRepository.findUserByLogin(login) == null) errors.add("невозможно произвести update. Пользователя с таким login не существует");
         }
     }
