@@ -5,9 +5,7 @@ import com.example.codemark.dto.UserDTO;
 import com.example.codemark.dto.UserWithRoles;
 import com.example.codemark.entity.Role;
 import com.example.codemark.entity.User;
-import com.example.codemark.entity.User2Role;
 import com.example.codemark.repository.RoleRepository;
-import com.example.codemark.repository.User2RoleRepository;
 import com.example.codemark.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -19,6 +17,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+//реализация веб-сервиса
 @Component
 @WebService(endpointInterface = "com.example.codemark.service.UserService", targetNamespace = "http://com.testTask.userService")
 public class UserServiceImpl implements UserService {
@@ -28,9 +27,6 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private RoleRepository roleRepository;
-
-    @Autowired
-    private User2RoleRepository user2RoleRepository;
 
     @Override
     public List<UserDTO> getAllUsers() {
@@ -56,7 +52,7 @@ public class UserServiceImpl implements UserService {
             userDTO.setName(user.getName());
             userDTO.setPassword(user.getPassword());
             userWithRoles.setUser(userDTO);
-            List<Role> roles = roleRepository.findRolesByUserLogin(login);
+            List<Role> roles = user.getUser2role();
             if (roles != null) {
                 List<String> roleList = roles.stream().map(Role::getName).collect(Collectors.toList());
                 userWithRoles.setRoleList(roleList);
@@ -70,7 +66,6 @@ public class UserServiceImpl implements UserService {
         ResponseTemplate responseTemplate = new ResponseTemplate();
         User userByLogin = userRepository.findUserByLogin(login);
         if (userByLogin != null) {
-            user2RoleRepository.deleteAll(user2RoleRepository.findUser2RoleByLogin(login));
             userRepository.delete(userByLogin);
             responseTemplate.setSuccess(true);
         } else {
@@ -86,7 +81,10 @@ public class UserServiceImpl implements UserService {
     public ResponseTemplate addUser(String login, String name, String password, List<String> roleList) {
         ResponseTemplate responseTemplate = new ResponseTemplate();
         List<String> errors = new ArrayList<>();
-        addErrors(login, name, password, errors, "addUser");
+        if (userRepository.findUserByLogin(login) != null) {
+            errors.add("невозможно добавить пользователя с такми login. Пользователь с таким login уже существует");
+        }
+        checkInputParameters(login, name, password, errors);
         if (errors.size() > 0) {
             responseTemplate.setSuccess(false);
             responseTemplate.setErrors(errors);
@@ -95,11 +93,11 @@ public class UserServiceImpl implements UserService {
             user.setLogin(login);
             user.setName(name);
             user.setPassword(password);
-            userRepository.save(user);
-
+            //если список ролей не пуст, то добавим связи юзеру
             if (roleList != null) {
                 addRolesAfterCheck(roleList, user);
             }
+            userRepository.save(user);
             responseTemplate.setSuccess(true);
         }
         return responseTemplate;
@@ -109,7 +107,10 @@ public class UserServiceImpl implements UserService {
     public ResponseTemplate updateUser(String login, String name, String password, List<String> roleList) {
         ResponseTemplate responseTemplate = new ResponseTemplate();
         List<String> errors = new ArrayList<>();
-        addErrors(login, name, password, errors, "updateUser");
+        if (userRepository.findUserByLogin(login) == null) {
+            errors.add("невозможно произвести update. Пользователя с таким login не существует");
+        }
+        checkInputParameters(login, name, password, errors);
         if (errors.size() > 0) {
             responseTemplate.setSuccess(false);
             responseTemplate.setErrors(errors);
@@ -117,44 +118,39 @@ public class UserServiceImpl implements UserService {
             User user = userRepository.findUserByLogin(login);
             user.setName(name);
             user.setPassword(password);
-            userRepository.save(user);
-
-            //если список ролей не пуст, то необходимо все старые роли пользователя убрать и добавить новые
+            //если список ролей не пуст, то обновим роли юзера
             if (roleList != null) {
-                //сначала удалим старые связи пользователя с ролями
-                user2RoleRepository.deleteAll(user2RoleRepository.findUser2RoleByLogin(login));
-                //добавим новые связи
                 addRolesAfterCheck(roleList, user);
             }
+            userRepository.save(user);
             responseTemplate.setSuccess(true);
         }
         return responseTemplate;
     }
 
     //вспомогательные методы
+    //метод для проверки введенных ролей на их уже возможное существование в БД (во избежании дублирования ролей)
     public void addRolesAfterCheck(List<String> roleList, User user) {
+        List<Role> roles = new ArrayList<>();
         for (String roleFrom : roleList) {
+            Role checkRole = roleRepository.findRoleByName(roleFrom);
             //если такой роли в БД нет, то добавляем ее
-            if (roleRepository.findRoleByName(roleFrom) == null) {
+            if (checkRole == null) {
                 Role role = new Role();
                 role.setName(roleFrom);
                 roleRepository.save(role);
                 //и добавляем связь
-                User2Role user2Role = new User2Role();
-                user2Role.setUser(user);
-                user2Role.setRole(role);
-                user2RoleRepository.save(user2Role);
+                roles.add(role);
             } else {
                 //если такая роль в БД есть, то роль не добавляем, а добавляем связь с одноименной ролью из БД
-                User2Role user2Role = new User2Role();
-                user2Role.setUser(user);
-                user2Role.setRole(roleRepository.findRoleByName(roleFrom));
-                user2RoleRepository.save(user2Role);
+                roles.add(checkRole);
             }
         }
+        user.setUser2role(roles);
     }
 
-    public void addErrors(String login, String name, String password, List<String> errors, String method) {
+
+    public void checkInputParameters(String login, String name, String password, List<String> errors) {
         Pattern pattern = Pattern.compile("\\d");
         Matcher matcher = pattern.matcher(password);
         if (login.isEmpty()) errors.add("поле login не должно быть пустым");
@@ -162,12 +158,5 @@ public class UserServiceImpl implements UserService {
         if (password.isEmpty()) errors.add("поле password не должно быть пустым");
         if (!matcher.find()) errors.add("поле password должно содержать хотя бы одно числовое значение");
         if (password.equals(password.toLowerCase())) errors.add("поле password должно содержать хотя бы одну заглавную букву");
-        //в зависимости от метода нам необходимо проверятб существует ли данный пользователь в БД или нет
-        if (method.equals("addUser")) {
-            if (userRepository.findUserByLogin(login) != null) errors.add("невозможно добавить пользователя с такми login. Пользователь с таким login уже существует");
-        }
-        if (method.equals("updateUser")) {
-            if (userRepository.findUserByLogin(login) == null) errors.add("невозможно произвести update. Пользователя с таким login не существует");
-        }
     }
 }

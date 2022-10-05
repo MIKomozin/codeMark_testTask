@@ -13,6 +13,7 @@ import javax.xml.ws.RequestWrapper;
 import javax.xml.ws.ResponseWrapper;
 import java.util.List;
 
+//Интерфейс конечной точки веб-службы
 @Component
 @WebService
 public interface UserService {

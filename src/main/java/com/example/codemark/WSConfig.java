@@ -22,6 +22,7 @@ public class WSConfig {
         this.userService = userService;
     }
 
+    //публикация конечных точек веб-службы (у меня реализация снизу вверх)
     @Bean
     public Endpoint userServiceEndpoint() {
         EndpointImpl endpoint = new EndpointImpl(bus, userService);

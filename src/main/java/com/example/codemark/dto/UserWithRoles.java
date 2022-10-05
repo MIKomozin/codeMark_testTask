@@ -7,7 +7,6 @@ public class UserWithRoles {
     private UserDTO user;
     private List<String> roleList;
 
-
     public UserDTO getUser() {
         return user;
     }

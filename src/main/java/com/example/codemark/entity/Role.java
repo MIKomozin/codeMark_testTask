@@ -14,9 +14,8 @@ public class Role {
     @Column(columnDefinition = "VARCHAR(255) NOT NULL")
     private String name;
 
-    @OneToMany(mappedBy = "role")
-    List<User2Role> role2user;
-
+    @ManyToMany(mappedBy = "user2role")
+    List<User> role2user;
 
     public Integer getId() {
         return id;
@@ -34,11 +33,11 @@ public class Role {
         this.name = name;
     }
 
-    public List<User2Role> getRole2user() {
+    public List<User> getRole2user() {
         return role2user;
     }
 
-    public void setRole2user(List<User2Role> role2user) {
+    public void setRole2user(List<User> role2user) {
         this.role2user = role2user;
     }
 }
